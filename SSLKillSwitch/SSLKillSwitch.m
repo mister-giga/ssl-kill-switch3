@@ -139,8 +139,6 @@ static BOOL shouldHookFromPreference()
 #endif
 }
 
-
-
 #pragma mark SecureTransport hooks - iOS 9 and below
 // Explanation here: https://nabla-c0d3.github.io/blog/2013/08/20/ios-ssl-kill-switch-v0-dot-5-released/
 
@@ -589,42 +587,15 @@ __attribute__((constructor)) static void init(int argc, const char **argv)
         if ([processInfo isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){12, 0, 0}])
         {
             // Support for iOS 12 and 13
-
             if ([processInfo isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){13, 0, 0}])
             {
                 SSKInfoLog("iOS 13+ detected");
                 // iOS 13 uses SSL_set_custom_verify() which was recently added to BoringSSL
                 hookF("/usr/lib/libboringssl.dylib", "SSL_set_custom_verify", (void *) replaced_SSL_set_custom_verify,  (void **) &original_SSL_set_custom_verify);
             }
-            else
-            {
-                SSKInfoLog("iOS 12 detected");
-                // iOS 12 uses the older SSL_CTX_set_custom_verify()
-                hookF("/usr/lib/libboringssl.dylib", "SSL_CTX_set_custom_verify", (void *) replaced_SSL_CTX_set_custom_verify,  (void **) &original_SSL_CTX_set_custom_verify);
-            }
             
             // Hook SSL_get_psk_identity() on both iOS 12 and 13
             hookF("/usr/lib/libboringssl.dylib", "SSL_get_psk_identity", (void *) replaced_SSL_get_psk_identity,  (void **) NULL);
-        }
-		else if ([processInfo isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){11, 0, 0}])
-		{
-            // Support for iOS 11
-            SSKInfoLog("iOS 11 detected; hooking nw_tls_create_peer_trust()...");
-			hookF("/usr/lib/libnetwork.dylib", "nw_tls_create_peer_trust", (void *) replaced_tls_helper_create_peer_trust,  (void **) &original_tls_helper_create_peer_trust);
-		}
-        else if ([processInfo isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){10, 0, 0}])
-        {
-            // Support for iOS 10
-            SSKInfoLog("iOS 10 detected; hooking tls_helper_create_peer_trust()...");
-            hookF(NULL, "tls_helper_create_peer_trust", (void *) replaced_tls_helper_create_peer_trust,  (void **) &original_tls_helper_create_peer_trust);
-        }
-        else if ([processInfo isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){8, 0, 0}])
-        {
-            // SecureTransport hooks - works up to iOS 9
-            SSKInfoLog("iOS 8 or 9 detected; hooking SecureTransport...");
-            hookF(NULL, "SSLHandshake",(void *)  replaced_SSLHandshake, (void **) &original_SSLHandshake);
-            hookF(NULL, "SSLSetSessionOption",(void *)  replaced_SSLSetSessionOption, (void **) &original_SSLSetSessionOption);
-            hookF(NULL, "SSLCreateContext",(void *)  replaced_SSLCreateContext, (void **) &original_SSLCreateContext);
         }
 
         // CocoaSPDY hooks - https://github.com/twitter/CocoaSPDY
